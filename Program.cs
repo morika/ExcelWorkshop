@@ -34,4 +34,10 @@ app.MapPost("/ReadFile", (IFormFile file) =>
     return cast;
 }).DisableAntiforgery();
 
+app.MapPost("/WriteFile", (List<WeatherForecast> request) =>
+{
+    var spreadsheet = new Spreadsheet<WeatherForecast>();
+    spreadsheet.Write(request, "Sheet1", 1);
+}).DisableAntiforgery();
+
 app.Run();
