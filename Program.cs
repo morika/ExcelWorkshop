@@ -1,3 +1,4 @@
+using System.Reflection;
 using ExcelWorkshop;
 using PackageRepository.Components.Spreadsheet;
 
@@ -38,6 +39,16 @@ app.MapPost("/WriteFile", (List<WeatherForecast> request) =>
 {
     var spreadsheet = new Spreadsheet<WeatherForecast>();
     spreadsheet.Write(request, "Sheet1", 1);
+}).DisableAntiforgery();
+
+app.MapPost("/FillFile", (List<WeatherForecast> request) =>
+{
+    string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/excel.xlsx";
+    FileStream fileStream = new(path, FileMode.Open);
+    using MemoryStream memoryStream = new();
+    fileStream.CopyTo(memoryStream);
+    var spreadsheet = new Spreadsheet<WeatherForecast>();
+    spreadsheet.Fill(memoryStream, request, "Sheet1", 1, 10);
 }).DisableAntiforgery();
 
 app.Run();

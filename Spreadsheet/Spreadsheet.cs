@@ -93,7 +93,7 @@ namespace PackageRepository.Components.Spreadsheet
                         {
                             worksheet.Cell(headerRowIndex, i).Value = fieldAttribute.CellName;
                             int rowIndex = headerRowIndex + 1;
-                            foreach(var item in data)
+                            foreach (var item in data)
                             {
                                 PropertyInfo tResponseInfo = typeof(T).GetProperty(property.Name);
                                 worksheet.Cell(rowIndex, i).Value = tResponseInfo.GetValue(item).ToString();
@@ -106,6 +106,51 @@ namespace PackageRepository.Components.Spreadsheet
                 }
 
                 string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/excel.xlsx";
+                workbook.SaveAs(path);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
+
+        public void Fill(MemoryStream file, List<T> data, string sheetName, int headerRowIndex = 0, int dataRowIndex = 0)
+        {
+            try
+            {
+                if (file == null || file.Length <= 0)
+                    throw new Exception("File is corrupted");
+
+                if (data == null || data.Count == 0)
+                    throw new Exception("Data is null");
+
+                using var workbook = new XLWorkbook(file);
+                var worksheet = workbook.Worksheet(sheetName);
+
+                var header = worksheet.Row(headerRowIndex);
+
+                PropertyInfo[] properties = typeof(T).GetProperties();
+
+                foreach (var property in properties)
+                {
+                    object[] attributes = property.GetCustomAttributes(typeof(SpreadsheetFieldAttribute), true);
+                    foreach (var attribute in attributes)
+                    {
+                        if (attribute is SpreadsheetFieldAttribute fieldAttribute)
+                        {
+                            var columnIndex = header.CellsUsed().FirstOrDefault(x => x.Value.ToString() == property.Name);
+                            int rowIndex = dataRowIndex;
+                            foreach (var item in data)
+                            {
+                                PropertyInfo tResponseInfo = typeof(T).GetProperty(property.Name);
+                                worksheet.Cell(rowIndex, columnIndex.Address.ColumnNumber).Value = tResponseInfo.GetValue(item).ToString();
+                                rowIndex++;
+                            }
+                        }
+                    }
+                }
+
+                string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/Dupexcel.xlsx";
                 workbook.SaveAs(path);
             }
             catch (Exception ex)
