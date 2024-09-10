@@ -7,7 +7,7 @@ namespace ExcelWorkshop
         [SpreadsheetField(cellName: "TemperatureC")]
         public int TemperatureC { get; set; }
 
-        [SpreadsheetField(cellName: "Summary")]
+        [SpreadsheetField(cellName: "Summary", length: 10, startWith: "09")]
         public string Summary { get; set; }
     }
 }

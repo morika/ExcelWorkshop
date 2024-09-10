@@ -10,7 +10,7 @@ namespace PackageRepository.Components.Spreadsheet
         {
             try
             {
-                if (file == null || file.Length <= 0)
+                if (file is not { Length: > 0 })
                     throw new Exception("File is corrupted");
 
                 List<T> response = [];
@@ -21,7 +21,7 @@ namespace PackageRepository.Components.Spreadsheet
 
                 var header = worksheet.Row(headerRowIndex);
 
-                foreach (var row in worksheet.RowsUsed().Skip(startRowIndex))
+                foreach (var row in worksheet.RowsUsed().Skip(startRowIndex > 1 ? startRowIndex - 1 : headerRowIndex ))
                 {
                     T TResponse = new();
                     foreach (var cell in row.CellsUsed())
@@ -32,28 +32,39 @@ namespace PackageRepository.Components.Spreadsheet
                             object[] attributes = property.GetCustomAttributes(typeof(SpreadsheetFieldAttribute), true);
                             foreach (var attribute in attributes)
                             {
-                                if (attribute is SpreadsheetFieldAttribute fieldAttribute && fieldAttribute.CellName == headerField.GetString())
-                                {
-                                    PropertyInfo tResponseInfo = typeof(T).GetProperty(property.Name);
-                                    if (tResponseInfo.CanWrite)
-                                    {
-                                        TypeCode typeCode = Type.GetTypeCode(tResponseInfo.PropertyType);
-                                        switch (typeCode)
-                                        {
-                                            case TypeCode.Int32:
-                                                tResponseInfo.SetValue(TResponse, (int)cell.Value);
-                                                break;
-                                            case TypeCode.Boolean:
-                                                tResponseInfo.SetValue(TResponse, (bool)cell.Value);
-                                                break;
-                                            case TypeCode.Double:
-                                                tResponseInfo.SetValue(TResponse, (double)cell.Value);
-                                                break;
-                                            default:
-                                                tResponseInfo.SetValue(TResponse, cell.GetString());
-                                                break;
-                                        }
+                                if (attribute is not SpreadsheetFieldAttribute fieldAttribute ||
+                                    fieldAttribute.CellName != headerField.GetString()) continue;
 
+                                PropertyInfo tResponseInfo = typeof(T).GetProperty(property.Name);
+                                if (tResponseInfo.CanWrite)
+                                {
+                                    TypeCode typeCode = Type.GetTypeCode(tResponseInfo.PropertyType);
+
+                                    switch (typeCode)
+                                    {
+                                        case TypeCode.String:
+                                            if (fieldAttribute.Length > 0 &&
+                                                cell.Value.ToString().Length != fieldAttribute.Length)
+                                                throw new Exception("Length is not match");
+
+                                            if (!string.IsNullOrEmpty(fieldAttribute.StartWith) &&
+                                                !cell.Value.ToString().StartsWith(fieldAttribute.StartWith))
+                                                throw new Exception("StartWith is not match");
+
+                                            tResponseInfo.SetValue(TResponse, cell.GetString());
+                                            break;
+                                        case TypeCode.Int32:
+                                            tResponseInfo.SetValue(TResponse, (int)cell.Value);
+                                            break;
+                                        case TypeCode.Boolean:
+                                            tResponseInfo.SetValue(TResponse, (bool)cell.Value);
+                                            break;
+                                        case TypeCode.Double:
+                                            tResponseInfo.SetValue(TResponse, (double)cell.Value);
+                                            break;
+                                        default:
+                                            tResponseInfo.SetValue(TResponse, cell.GetString());
+                                            break;
                                     }
                                 }
                             }
@@ -71,7 +82,7 @@ namespace PackageRepository.Components.Spreadsheet
             }
         }
 
-        public void Write(List<T> data, string sheetName, int headerRowIndex = 0)
+        public MemoryStream Write(List<T> data, string sheetName, int headerRowIndex = 0)
         {
             try
             {
@@ -96,7 +107,7 @@ namespace PackageRepository.Components.Spreadsheet
                             foreach (var item in data)
                             {
                                 PropertyInfo tResponseInfo = typeof(T).GetProperty(property.Name);
-                                worksheet.Cell(rowIndex, i).Value = tResponseInfo.GetValue(item).ToString();
+                                worksheet.Cell(rowIndex, i).Value = tResponseInfo.GetValue(item)?.ToString();
                                 rowIndex++;
                             }
                         }
@@ -105,8 +116,12 @@ namespace PackageRepository.Components.Spreadsheet
                     }
                 }
 
-                string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/excel.xlsx";
-                workbook.SaveAs(path);
+                // string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/excel.xlsx";
+                // workbook.SaveAs(path);
+
+                MemoryStream file = new();
+                workbook.SaveAs(file);
+                return file;
             }
             catch (Exception ex)
             {
@@ -114,7 +129,8 @@ namespace PackageRepository.Components.Spreadsheet
             }
         }
 
-        public void Fill(MemoryStream file, List<T> data, string sheetName, int headerRowIndex = 0, int dataRowIndex = 0)
+        public void Fill(MemoryStream file, List<T> data, string sheetName, int headerRowIndex = 0,
+            int dataRowIndex = 0)
         {
             try
             {
@@ -138,12 +154,14 @@ namespace PackageRepository.Components.Spreadsheet
                     {
                         if (attribute is SpreadsheetFieldAttribute fieldAttribute)
                         {
-                            var columnIndex = header.CellsUsed().FirstOrDefault(x => x.Value.ToString() == property.Name);
+                            var columnIndex = header.CellsUsed()
+                                .FirstOrDefault(x => x.Value.ToString() == property.Name);
                             int rowIndex = dataRowIndex;
                             foreach (var item in data)
                             {
                                 PropertyInfo tResponseInfo = typeof(T).GetProperty(property.Name);
-                                worksheet.Cell(rowIndex, columnIndex.Address.ColumnNumber).Value = tResponseInfo.GetValue(item).ToString();
+                                worksheet.Cell(rowIndex, columnIndex.Address.ColumnNumber).Value =
+                                    tResponseInfo.GetValue(item).ToString();
                                 rowIndex++;
                             }
                         }

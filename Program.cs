@@ -30,7 +30,7 @@ app.MapPost("/ReadFile", (IFormFile file) =>
     using MemoryStream memoryStream = new();
     file.CopyTo(memoryStream);
     var spreadsheet = new Spreadsheet<WeatherForecast>();
-    var fileContent = spreadsheet.Read(memoryStream, "Sheet1", 1, 2);
+    var fileContent = spreadsheet.Read(memoryStream, "Sheet1");
     List<WeatherForecast> cast = fileContent;
     return cast;
 }).DisableAntiforgery();
@@ -38,7 +38,10 @@ app.MapPost("/ReadFile", (IFormFile file) =>
 app.MapPost("/WriteFile", (List<WeatherForecast> request) =>
 {
     var spreadsheet = new Spreadsheet<WeatherForecast>();
-    spreadsheet.Write(request, "Sheet1", 1);
+    var s = spreadsheet.Write(request, "Sheet1", 1);
+    var fileContent = spreadsheet.Read(s, "Sheet1", 1, 2);
+    List<WeatherForecast> cast = fileContent;
+    return cast;
 }).DisableAntiforgery();
 
 app.MapPost("/FillFile", (List<WeatherForecast> request) =>
