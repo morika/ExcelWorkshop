@@ -62,6 +62,15 @@ namespace PackageRepository.Components.Spreadsheet
                                         case TypeCode.Double:
                                             tResponseInfo.SetValue(TResponse, (double)cell.Value);
                                             break;
+                                        case TypeCode.Int64:
+                                            tResponseInfo.SetValue(TResponse, (long)cell.Value);
+                                            break;
+                                        case TypeCode.Decimal:
+                                            tResponseInfo.SetValue(TResponse, decimal.Parse(cell.Value.ToString()));
+                                            break;
+                                        case TypeCode.DateTime:
+                                            tResponseInfo.SetValue(TResponse, DateTime.Parse(cell.Value.ToString()));
+                                            break;
                                         default:
                                             tResponseInfo.SetValue(TResponse, cell.GetString());
                                             break;
@@ -115,10 +124,10 @@ namespace PackageRepository.Components.Spreadsheet
                         i++;
                     }
                 }
-
-                // string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/excel.xlsx";
-                // workbook.SaveAs(path);
-
+                
+                string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/excel.xlsx";
+                workbook.SaveAs(path);
+                
                 MemoryStream file = new();
                 workbook.SaveAs(file);
                 return file;
